@@ -144,6 +144,17 @@ export function projectTotal(data: TrackerData, projectId: string, now: number):
   return total;
 }
 
+/** Everything tracked since `from`, attributing a session to the day it began. */
+export function totalSince(data: TrackerData, from: number, now: number): number {
+  let total = 0;
+  for (const session of data.sessions) {
+    if (session.startedAt >= from) total += session.duration;
+  }
+  const current = data.sessions.find((session) => session.id === data.currentSessionId);
+  if (current && current.startedAt >= from) total += liveElapsed(data, now);
+  return total;
+}
+
 export type HistoryEntry = {
   id: string;
   projectId: string;
@@ -269,6 +280,49 @@ export function createProject(name: string, description: string): Project {
     currentSessionId: null,
   });
   return project;
+}
+
+/* ----------------------------------------------------------------- sessions */
+
+/**
+ * Record work that was never timed — or fix a session after the fact.
+ * A hand-edited session is taken at face value: the user is saying "I worked
+ * from here to here", so its duration becomes exactly that span.
+ */
+export function addSession(projectId: string, startedAt: number, endedAt: number) {
+  if (!projectId || endedAt <= startedAt) return;
+  const session: TimeSession = {
+    id: newId(),
+    projectId,
+    startedAt,
+    endedAt,
+    duration: endedAt - startedAt,
+  };
+  commit({ ...state, sessions: [...state.sessions, session] });
+}
+
+export function updateSession(id: string, startedAt: number, endedAt: number) {
+  if (endedAt <= startedAt) return;
+  // the running session is defined by the clock, not by the stored times
+  if (id === state.currentSessionId && state.runningSince !== null) return;
+  commit({
+    ...state,
+    sessions: state.sessions.map((session) =>
+      session.id === id
+        ? { ...session, startedAt, endedAt, duration: endedAt - startedAt }
+        : session,
+    ),
+  });
+}
+
+export function deleteSession(id: string) {
+  // if it is the one on the clock, stop first so nothing keeps counting
+  const data = id === state.currentSessionId ? pauseData(state, Date.now()) : state;
+  commit({
+    ...data,
+    sessions: data.sessions.filter((session) => session.id !== id),
+    currentSessionId: data.currentSessionId === id ? null : data.currentSessionId,
+  });
 }
 
 export function updateProject(id: string, name: string, description: string) {

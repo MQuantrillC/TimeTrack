@@ -1,10 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { NewProjectDialog } from "@/components/NewProjectDialog";
 import { ProjectCombobox } from "@/components/ProjectCombobox";
 import { PauseIcon, PlayIcon, PlusIcon } from "@/components/icons";
-import { formatClock, formatHm, formatHms } from "@/lib/time";
+import { formatClock, formatHm, formatHms, startOfDay, startOfWeek } from "@/lib/time";
 import { useNow } from "@/lib/useNow";
 import {
   currentSessionElapsed,
@@ -15,6 +15,7 @@ import {
   projectTotal,
   selectProject,
   start,
+  totalSince,
   useTracker,
 } from "@/lib/store";
 
@@ -27,6 +28,25 @@ export default function TimerPage() {
   const project = findProject(data, data.selectedProjectId);
   const sessionElapsed = project ? currentSessionElapsed(data, now) : 0;
   const total = project ? projectTotal(data, project.id, now) : 0;
+
+  // Space starts and pauses, unless the user is typing or a dialog is open.
+  const projectId = project?.id ?? null;
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.code !== "Space" || event.repeat) return;
+      if (event.metaKey || event.ctrlKey || event.altKey || event.shiftKey) return;
+      if (!projectId) return;
+      // let the browser handle Space on anything focusable, so it never double-fires
+      const target = event.target as HTMLElement | null;
+      if (target?.closest("input, textarea, select, button, a, [contenteditable]")) return;
+      if (document.querySelector("[role=dialog]")) return;
+      event.preventDefault();
+      if (running) pause();
+      else start();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [projectId, running]);
 
   if (!data.ready) {
     return <div className="h-[520px]" aria-hidden />;
@@ -114,6 +134,16 @@ export default function TimerPage() {
             </button>
           </div>
 
+          {project && (
+            <p className="mt-4 hidden text-xs text-ink-subtle sm:block">
+              Press{" "}
+              <kbd className="rounded border border-line-strong bg-sunken px-1.5 py-0.5 font-mono text-[10px] text-ink-muted">
+                Space
+              </kbd>{" "}
+              to {running ? "pause" : "start"}
+            </p>
+          )}
+
           <dl className="mt-10 flex w-full border-t border-line pt-6 sm:mt-11">
             <Stat label="Current session" value={formatHms(sessionElapsed)} />
             <div className="w-px bg-line" />
@@ -123,7 +153,12 @@ export default function TimerPage() {
       </section>
 
       <section>
-        <div className="flex items-baseline justify-between px-1">
+        <dl className="card flex divide-x divide-line">
+          <Period label="Today" value={totalSince(data, startOfDay(now), now)} />
+          <Period label="This week" value={totalSince(data, startOfWeek(now), now)} />
+        </dl>
+
+        <div className="mt-8 flex items-baseline justify-between px-1">
           <h2 className="label">My Projects</h2>
           <button
             type="button"
@@ -214,6 +249,21 @@ function Status({ hasProject, running }: { hasProject: boolean; running: boolean
       />
       {running ? "Running" : "Paused"}
     </span>
+  );
+}
+
+function Period({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="flex flex-1 items-baseline justify-between gap-3 px-5 py-3.5">
+      <dt className="text-[11px] font-semibold tracking-[0.14em] text-sage-deep uppercase">
+        {label}
+      </dt>
+      <dd
+        className={`font-mono text-sm tabular-nums ${value > 0 ? "text-ink" : "text-ink-subtle"}`}
+      >
+        {formatHm(value)}
+      </dd>
+    </div>
   );
 }
 

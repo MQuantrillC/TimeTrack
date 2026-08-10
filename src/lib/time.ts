@@ -41,6 +41,35 @@ export function formatDateTime(ts: number): string {
   return `${day} ${formatTimeOfDay(ts)}`;
 }
 
+export function startOfDay(now: number): number {
+  const date = new Date(now);
+  date.setHours(0, 0, 0, 0);
+  return date.getTime();
+}
+
+/** Weeks start on Monday. */
+export function startOfWeek(now: number): number {
+  const date = new Date(startOfDay(now));
+  date.setDate(date.getDate() - ((date.getDay() + 6) % 7));
+  return date.getTime();
+}
+
+/** Epoch to the value an <input type="datetime-local"> expects, in local time. */
+export function toDateTimeInput(ts: number): string {
+  const date = new Date(ts);
+  return (
+    `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}` +
+    `T${pad(date.getHours())}:${pad(date.getMinutes())}`
+  );
+}
+
+/** Back again. Returns null if the field is empty or unparseable. */
+export function fromDateTimeInput(value: string): number | null {
+  if (!value) return null;
+  const ts = new Date(value).getTime();
+  return Number.isNaN(ts) ? null : ts;
+}
+
 /** 10:54 minutes · 2:32:15 hours · 42 seconds */
 export function formatDurationLabel(ms: number): string {
   const total = Math.max(0, Math.floor(ms / 1000));
