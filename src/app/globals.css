@@ -1,26 +1,142 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+/* ============================================================================
+   TimeTrack brand tokens
+   Palette: deep olive, muted sage, warm orange, golden peach, blush, mauve.
+   Neutrals carry the interface; brand colour is used deliberately, not evenly.
+   ========================================================================== */
+
+@theme {
+  /* -- Neutrals (the majority of every screen) ---------------------------- */
+  --color-canvas: #faf7f0; /* warm off-white page background */
+  --color-surface: #fffdf8; /* cards, panels */
+  --color-sunken: #f2eee2; /* selected rows, inset areas */
+  --color-line: #e8e2d4; /* hairline borders */
+  --color-line-strong: #d9d2bf; /* inputs, dividers that need weight */
+  --color-ink: #23261b; /* primary text — very dark olive charcoal */
+  --color-ink-muted: #6f7161; /* secondary text — soft warm grey */
+  --color-ink-subtle: #83846f; /* placeholders, idle icons (3.4:1 — UI only) */
+
+  /* -- Primary: deep olive ------------------------------------------------ */
+  --color-olive: #5e5c2d;
+  --color-olive-deep: #43421f; /* hover / pressed */
+  --color-olive-tint: #ecead9; /* washes, quiet backgrounds */
+
+  /* -- Secondary: muted sage ---------------------------------------------- */
+  --color-sage: #999a57; /* dots, rules, decorative only */
+  --color-sage-deep: #74753f; /* the text-safe sage */
+
+  /* -- Action: warm orange ------------------------------------------------ */
+  --color-orange: #fc9c51; /* fills, indicators — never small text */
+  --color-orange-deep: #ef8a37; /* hover on orange fills */
+  --color-ember: #ce6f21; /* orange for large text — the running timer (3.3:1) */
+  --color-ember-deep: #a8551a; /* orange for small text — pills, links (4.8:1) */
+  --color-orange-tint: #fdf1e4;
+
+  /* -- Supporting (used sparingly) ---------------------------------------- */
+  --color-peach: #fec67c;
+  --color-blush: #f9bdb0;
+  --color-blush-tint: #fdf0ec;
+  --color-mauve: #a16a84;
+  --color-mauve-deep: #8a5871;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+:root {
+  color-scheme: light;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  @apply bg-canvas text-ink antialiased;
+  font-family: var(--font-sans);
+}
+
+::selection {
+  background: var(--color-peach);
+  color: var(--color-ink);
+}
+
+@layer components {
+  .card {
+    @apply rounded-xl border border-line bg-surface;
+    box-shadow: 0 1px 2px rgb(35 38 27 / 0.04);
+  }
+
+  /* -- Form controls ----------------------------------------------------- */
+  .input {
+    @apply w-full rounded-lg border border-line-strong bg-surface px-3.5 py-2.5 text-sm text-ink
+      transition-colors placeholder:text-ink-subtle focus:border-olive focus:outline-none;
+  }
+
+  .select {
+    @apply w-full cursor-pointer appearance-none rounded-lg border border-line-strong bg-surface
+      py-2.5 pr-10 pl-3.5 text-sm text-ink transition-colors focus:border-olive focus:outline-none;
+  }
+
+  /* -- Buttons ----------------------------------------------------------- */
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium
+      transition-colors select-none disabled:cursor-not-allowed disabled:opacity-40;
+  }
+
+  /* START — the one moment of full-strength orange in the product */
+  .btn-action {
+    @apply bg-orange text-ink hover:bg-orange-deep disabled:hover:bg-orange;
+  }
+
+  /* PAUSE and other committed actions */
+  .btn-primary {
+    @apply bg-olive text-canvas hover:bg-olive-deep disabled:hover:bg-olive;
+  }
+
+  .btn-outline {
+    @apply border border-line-strong bg-surface text-ink hover:border-olive hover:bg-olive-tint/50
+      disabled:hover:border-line-strong disabled:hover:bg-surface;
+  }
+
+  .btn-ghost {
+    @apply text-ink-muted hover:bg-olive-tint/60 hover:text-ink;
+  }
+
+  /* Destructive — warm mauve, never a siren red */
+  .btn-danger {
+    @apply bg-mauve text-white hover:bg-mauve-deep;
+  }
+
+  /* -- Type ------------------------------------------------------------- */
+  .label {
+    @apply text-[11px] font-semibold tracking-[0.14em] text-sage-deep uppercase;
+  }
+
+  .timer {
+    @apply font-mono font-light tracking-tight tabular-nums;
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+@layer utilities {
+  /* Slow, calm breathing for the running indicator — not a blinking alarm */
+  .animate-breathe {
+    animation: breathe 2.6s ease-in-out infinite;
+  }
+}
+
+@keyframes breathe {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-breathe {
+    animation: none;
+  }
 }
