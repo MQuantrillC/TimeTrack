@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { AuthError, AuthField } from "@/components/AuthField";
+import { AuthError, AuthField, NoDatabaseNotice } from "@/components/AuthField";
 import { signIn, useAccount } from "@/lib/account";
 
 export default function SignInPage() {
@@ -54,9 +54,7 @@ export default function SignInPage() {
         </AuthField>
 
         {error && <AuthError message={error} />}
-        {!account.accountsAvailable && (
-          <AuthError message="This deployment has no database configured, so accounts are unavailable." />
-        )}
+        {!account.accountsAvailable && <NoDatabaseNotice />}
 
         <button type="submit" disabled={busy} className="btn btn-primary w-full py-3">
           {busy ? "Signing in…" : "Sign in"}

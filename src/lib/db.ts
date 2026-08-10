@@ -1,14 +1,53 @@
 import { neon } from "@neondatabase/serverless";
 
 /**
- * Neon Postgres. The Vercel integration injects DATABASE_URL; POSTGRES_URL is
- * accepted as a fallback so either wiring works.
+ * Neon Postgres.
+ *
+ * Vercel's Postgres integrations do not all inject the same variable name, and
+ * the Neon marketplace integration lets you choose a prefix, so rather than
+ * insisting on one name we look through the ones in common use and then fall
+ * back to any variable whose value is a Postgres URL.
  */
-const connectionString = process.env.DATABASE_URL ?? process.env.POSTGRES_URL;
 
-export const isDatabaseConfigured = Boolean(connectionString);
+const CANDIDATES = [
+  "DATABASE_URL",
+  "POSTGRES_URL",
+  "NEON_DATABASE_URL",
+  "DATABASE_POSTGRES_URL",
+  "POSTGRES_PRISMA_URL",
+  "DATABASE_URL_UNPOOLED",
+  "POSTGRES_URL_NON_POOLING",
+];
 
-const client = connectionString ? neon(connectionString) : null;
+const POSTGRES_URL = /^postgres(ql)?:\/\//;
+
+function findConnection(): { name: string; value: string } | null {
+  for (const name of CANDIDATES) {
+    const value = process.env[name];
+    if (value && POSTGRES_URL.test(value)) return { name, value };
+  }
+  // a custom integration prefix still works
+  for (const [name, value] of Object.entries(process.env)) {
+    if (value && POSTGRES_URL.test(value)) return { name, value };
+  }
+  return null;
+}
+
+const connection = findConnection();
+
+export const isDatabaseConfigured = connection !== null;
+
+/** Which variable the connection came from — for diagnostics, never the value. */
+export const connectionVariable = connection?.name ?? null;
+
+/** Names of every variable that looks like a Postgres URL, for diagnostics. */
+export function detectedVariables(): string[] {
+  return Object.entries(process.env)
+    .filter(([, value]) => value && POSTGRES_URL.test(value))
+    .map(([name]) => name);
+}
+
+const client = connection ? neon(connection.value) : null;
 
 let schemaReady: Promise<void> | null = null;
 
