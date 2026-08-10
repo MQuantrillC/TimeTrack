@@ -86,6 +86,50 @@ export function PencilIcon({ className }: IconProps) {
   );
 }
 
+export function CloudIcon({ className }: IconProps) {
+  return (
+    <Icon className={className}>
+      <path d="M7 18.5a4 4 0 0 1-.4-7.98 5.5 5.5 0 0 1 10.6-1.1A3.75 3.75 0 0 1 17.5 18.5Z" />
+    </Icon>
+  );
+}
+
+export function CloudOffIcon({ className }: IconProps) {
+  return (
+    <Icon className={className}>
+      <path d="M6.9 10.53A4 4 0 0 0 7 18.5h9.2" />
+      <path d="M9.4 7.2a5.5 5.5 0 0 1 7.8 2.22A3.75 3.75 0 0 1 18.9 16" />
+      <path d="M4.5 4.5 19.5 19.5" />
+    </Icon>
+  );
+}
+
+export function CheckIcon({ className }: IconProps) {
+  return (
+    <Icon className={className}>
+      <path d="m5.5 12.5 4.2 4.2 8.8-9.4" />
+    </Icon>
+  );
+}
+
+export function CopyIcon({ className }: IconProps) {
+  return (
+    <Icon className={className}>
+      <rect x="9" y="9" width="10.5" height="10.5" rx="2.2" />
+      <path d="M15 6.2A1.7 1.7 0 0 0 13.3 4.5H6.2A1.7 1.7 0 0 0 4.5 6.2v7.1A1.7 1.7 0 0 0 6.2 15" />
+    </Icon>
+  );
+}
+
+export function RefreshIcon({ className }: IconProps) {
+  return (
+    <Icon className={className}>
+      <path d="M19.5 12a7.5 7.5 0 1 1-2.2-5.3" />
+      <path d="M19.5 4.5V9H15" />
+    </Icon>
+  );
+}
+
 export function TrashIcon({ className }: IconProps) {
   return (
     <Icon className={className}>

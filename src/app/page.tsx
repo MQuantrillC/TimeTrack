@@ -33,8 +33,8 @@ export default function TimerPage() {
   }
 
   return (
-    <div className="space-y-12">
-      <section className="card px-6 py-10 sm:px-12 sm:py-14">
+    <div className="space-y-10 sm:space-y-12">
+      <section className="card px-4 py-9 sm:px-12 sm:py-14">
         <div className="mx-auto flex max-w-sm flex-col items-center">
           <span className="label">Current Project</span>
 
@@ -47,7 +47,7 @@ export default function TimerPage() {
             <button
               type="button"
               onClick={() => setDialogOpen(true)}
-              className="btn btn-outline shrink-0 px-3"
+              className="btn btn-outline shrink-0 self-stretch px-3.5"
               aria-label="New project"
               title="New project"
             >
@@ -55,10 +55,10 @@ export default function TimerPage() {
             </button>
           </div>
 
-          <div className="mt-12 text-center">
+          <div className="mt-10 text-center sm:mt-12">
             {project ? (
               <>
-                <h1 className="text-[22px] leading-tight font-semibold tracking-tight text-ink">
+                <h1 className="text-xl leading-tight font-semibold tracking-tight text-ink sm:text-[22px]">
                   {project.name}
                 </h1>
                 {project.description && (
@@ -66,14 +66,14 @@ export default function TimerPage() {
                 )}
               </>
             ) : (
-              <h1 className="text-[22px] font-normal text-ink-subtle">
+              <h1 className="text-lg font-normal text-ink-subtle sm:text-[22px]">
                 Select or create a project
               </h1>
             )}
           </div>
 
           <div
-            className={`timer mt-7 text-[3.25rem] sm:text-[5rem] ${
+            className={`timer mt-6 text-[3.25rem] sm:mt-7 sm:text-[5rem] ${
               !project ? "text-line-strong" : running ? "text-ember" : "text-ink"
             }`}
           >
@@ -82,13 +82,13 @@ export default function TimerPage() {
 
           <Status hasProject={Boolean(project)} running={running} />
 
-          <div className="mt-9 flex w-full flex-col gap-2.5">
+          <div className="mt-8 flex w-full flex-col gap-2.5 sm:mt-9">
             <div className="flex gap-2.5">
               <button
                 type="button"
                 onClick={start}
                 disabled={!project || running}
-                className="btn btn-action flex-1 py-3"
+                className="btn btn-action flex-1 py-3.5 sm:py-3"
               >
                 <PlayIcon className="size-3.5" />
                 START
@@ -97,7 +97,7 @@ export default function TimerPage() {
                 type="button"
                 onClick={pause}
                 disabled={!running}
-                className="btn btn-primary flex-1 py-3"
+                className="btn btn-primary flex-1 py-3.5 sm:py-3"
               >
                 <PauseIcon className="size-3.5" />
                 PAUSE
@@ -107,14 +107,14 @@ export default function TimerPage() {
               type="button"
               onClick={newSession}
               disabled={!project}
-              className="btn btn-outline py-3 text-ink-muted"
+              className="btn btn-outline py-3.5 text-ink-muted sm:py-3"
             >
               <PlusIcon className="size-4" />
               NEW SESSION
             </button>
           </div>
 
-          <dl className="mt-11 flex w-full border-t border-line pt-6">
+          <dl className="mt-10 flex w-full border-t border-line pt-6 sm:mt-11">
             <Stat label="Current session" value={formatHms(sessionElapsed)} />
             <div className="w-px bg-line" />
             <Stat label="Total project time" value={formatHms(total)} />

@@ -1,7 +1,7 @@
 "use client";
 
 import { useSyncExternalStore } from "react";
-import { createDemoData, newId } from "./demo";
+import { newId } from "./id";
 import type { Project, TimeSession, TrackerData } from "./types";
 
 const STORAGE_KEY = "timetrack.v1";
@@ -28,10 +28,37 @@ function persist(data: TrackerData) {
   }
 }
 
+/** Notified after every change the user made on this device, so it can be synced. */
+let onLocalChange: ((data: TrackerData) => void) | null = null;
+
+export function setLocalChangeHandler(handler: ((data: TrackerData) => void) | null) {
+  onLocalChange = handler;
+}
+
 function commit(data: TrackerData) {
   state = { ...data, ready: true };
   persist(data);
   listeners.forEach((listener) => listener());
+  onLocalChange?.(data);
+}
+
+/** Adopt state that came from the server. Does not echo back as a local change. */
+export function applyRemoteState(data: TrackerData) {
+  hydrated = true;
+  state = { ...data, ready: true };
+  persist(data);
+  listeners.forEach((listener) => listener());
+}
+
+/** The current state, for the sync engine to push. */
+export function snapshot(): TrackerData {
+  return {
+    projects: state.projects,
+    sessions: state.sessions,
+    selectedProjectId: state.selectedProjectId,
+    currentSessionId: state.currentSessionId,
+    runningSince: state.runningSince,
+  };
 }
 
 function read(): TrackerData | null {
@@ -55,13 +82,8 @@ function read(): TrackerData | null {
 function hydrate() {
   if (hydrated) return;
   hydrated = true;
-  const stored = read();
-  if (stored) {
-    state = { ...stored, ready: true };
-    listeners.forEach((listener) => listener());
-  } else {
-    commit(createDemoData(Date.now()));
-  }
+  state = { ...(read() ?? EMPTY), ready: true };
+  listeners.forEach((listener) => listener());
 }
 
 function subscribe(listener: () => void) {

@@ -77,6 +77,20 @@ body {
       py-2.5 pr-10 pl-3.5 text-sm text-ink transition-colors focus:border-olive focus:outline-none;
   }
 
+  /* iOS zooms the page when a focused field is under 16px — keep touch input at 16 */
+  @media (max-width: 640px) {
+    .input,
+    .select {
+      font-size: 16px;
+      padding-block: 0.7rem;
+    }
+  }
+
+  /* comfortable tap target for icon-only controls */
+  .icon-btn {
+    @apply inline-flex size-9 items-center justify-center rounded-md transition-colors;
+  }
+
   /* -- Buttons ----------------------------------------------------------- */
   .btn {
     @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium

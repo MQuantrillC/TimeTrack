@@ -29,9 +29,11 @@ export default function ProjectsPage() {
 
   return (
     <div>
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-[22px] font-semibold tracking-tight text-ink">Projects</h1>
+          <h1 className="text-xl font-semibold tracking-tight text-ink sm:text-[22px]">
+            Projects
+          </h1>
           <p className="mt-1 text-sm text-ink-muted">
             {data.projects.length} {data.projects.length === 1 ? "project" : "projects"} tracked
           </p>
@@ -42,7 +44,7 @@ export default function ProjectsPage() {
         </button>
       </div>
 
-      <div className="card mt-8 overflow-hidden">
+      <div className="card mt-6 overflow-hidden sm:mt-8">
         <div className="flex items-center justify-between border-b border-line bg-sunken/50 px-5 py-3">
           <span className="label">Project</span>
           <span className="label">Total time</span>
@@ -113,7 +115,7 @@ export default function ProjectsPage() {
                     }}
                     aria-label={`Rename ${project.name}`}
                     title="Rename"
-                    className="rounded-md p-1.5 text-ink-subtle transition-colors hover:bg-olive-tint hover:text-olive"
+                    className="icon-btn text-ink-subtle hover:bg-olive-tint hover:text-olive"
                   >
                     <PencilIcon className="size-4" />
                   </button>
@@ -122,7 +124,7 @@ export default function ProjectsPage() {
                     onClick={() => setConfirmingId(project.id)}
                     aria-label={`Delete ${project.name}`}
                     title="Delete"
-                    className="rounded-md p-1.5 text-ink-subtle transition-colors hover:bg-blush-tint hover:text-mauve"
+                    className="icon-btn text-ink-subtle hover:bg-blush-tint hover:text-mauve"
                   >
                     <TrashIcon className="size-4" />
                   </button>
