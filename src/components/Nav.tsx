@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Logo } from "@/components/Logo";
-import { SyncStatus } from "@/components/SyncStatus";
+import { AccountMenu } from "@/components/AccountMenu";
 
 const LINKS = [
   { href: "/", label: "Timer" },
@@ -43,7 +43,7 @@ export function Nav() {
                 </Link>
               ))}
             </nav>
-            <SyncStatus />
+            <AccountMenu />
           </div>
         </div>
 

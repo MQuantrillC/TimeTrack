@@ -13,17 +13,42 @@ const client = connectionString ? neon(connectionString) : null;
 let schemaReady: Promise<void> | null = null;
 
 /**
- * One row per sync code holding the whole tracker state.
+ * Three tables:
  *
- * The state is a small, self-consistent document that is always read and
- * written as a unit, so a single JSONB column is a better fit than normalised
- * tables: no cross-table transactions, no tombstones for deletes, and the
- * version column gives straightforward optimistic concurrency.
+ * - `users` — one row per account.
+ * - `auth_sessions` — login sessions, keyed by the SHA-256 of the cookie token.
+ * - `workspace_state` — the tracker state, one document per user.
+ *
+ * The tracker state is always read and written as a unit, so a single JSONB
+ * column is a better fit than normalised tables: no cross-table transactions,
+ * no tombstones for deletes, and the version column gives straightforward
+ * optimistic concurrency.
  */
 async function ensureSchema(sql: NonNullable<typeof client>) {
   await sql`
-    create table if not exists workspaces (
-      code text primary key,
+    create table if not exists users (
+      id text primary key,
+      first_name text not null,
+      last_name text not null,
+      email text not null unique,
+      password_hash text not null,
+      created_at timestamptz not null default now()
+    )
+  `;
+  await sql`
+    create table if not exists auth_sessions (
+      token_hash text primary key,
+      user_id text not null references users(id) on delete cascade,
+      expires_at timestamptz not null,
+      created_at timestamptz not null default now()
+    )
+  `;
+  await sql`
+    create index if not exists auth_sessions_user_id_idx on auth_sessions (user_id)
+  `;
+  await sql`
+    create table if not exists workspace_state (
+      user_id text primary key references users(id) on delete cascade,
       state jsonb not null,
       version integer not null default 1,
       updated_at timestamptz not null default now()

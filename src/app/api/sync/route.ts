@@ -1,17 +1,16 @@
-import { NextResponse } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
+import { userFromRequest } from "@/lib/auth";
 import { db, isDatabaseConfigured } from "@/lib/db";
-import { CODE_PATTERN } from "@/lib/id";
 import type { TrackerData } from "@/lib/types";
 
 /**
- * Sync endpoint. A sync code is the only credential — it is a long random
- * secret, so it is treated like a bearer token: never listed, never guessable,
- * and always validated against a strict format before it reaches the database.
+ * The signed-in user's tracker state. The session cookie is the only
+ * credential; every query is scoped to the user it resolves to.
  */
 
 export const dynamic = "force-dynamic";
 
-/** Guard against the endpoint being used as free general-purpose storage. */
+/** Guard against the endpoint being used as general-purpose storage. */
 const MAX_STATE_BYTES = 1_000_000;
 
 const noDatabase = () =>
@@ -20,7 +19,7 @@ const noDatabase = () =>
     { status: 503 },
   );
 
-const badCode = () => NextResponse.json({ error: "Invalid sync code." }, { status: 400 });
+const unauthorized = () => NextResponse.json({ error: "Sign in to sync." }, { status: 401 });
 
 function validState(value: unknown): value is TrackerData {
   if (typeof value !== "object" || value === null) return false;
@@ -28,70 +27,25 @@ function validState(value: unknown): value is TrackerData {
   return Array.isArray(data.projects) && Array.isArray(data.sessions);
 }
 
-function tooLarge(state: TrackerData) {
-  return JSON.stringify(state).length > MAX_STATE_BYTES;
-}
-
-/** Pull: GET /api/sync?code=… */
-export async function GET(request: Request) {
+/** Pull the stored state. 404 means the account has never synced. */
+export async function GET(request: NextRequest) {
   if (!isDatabaseConfigured) return noDatabase();
 
-  const code = new URL(request.url).searchParams.get("code") ?? "";
-  if (!CODE_PATTERN.test(code)) return badCode();
-
   try {
+    const user = await userFromRequest(request);
+    if (!user) return unauthorized();
+
     const sql = await db();
     const rows = await sql`
-      select state, version, updated_at from workspaces where code = ${code}
+      select state, version, updated_at from workspace_state where user_id = ${user.id}
     `;
     if (rows.length === 0) {
-      return NextResponse.json({ error: "No data found for that sync code." }, { status: 404 });
+      return NextResponse.json({ error: "Nothing stored yet." }, { status: 404 });
     }
-    const row = rows[0];
     return NextResponse.json({
-      state: row.state,
-      version: row.version,
-      updatedAt: row.updated_at,
-    });
-  } catch {
-    return NextResponse.json({ error: "Could not reach the database." }, { status: 502 });
-  }
-}
-
-/** Create: PUT /api/sync — claims a new code, or returns the existing row. */
-export async function PUT(request: Request) {
-  if (!isDatabaseConfigured) return noDatabase();
-
-  const body = await request.json().catch(() => null);
-  const code = typeof body?.code === "string" ? body.code : "";
-  if (!CODE_PATTERN.test(code)) return badCode();
-  if (!validState(body?.state)) {
-    return NextResponse.json({ error: "Invalid state." }, { status: 400 });
-  }
-  if (tooLarge(body.state)) {
-    return NextResponse.json({ error: "State is too large to sync." }, { status: 413 });
-  }
-
-  try {
-    const sql = await db();
-    const rows = await sql`
-      insert into workspaces (code, state)
-      values (${code}, ${JSON.stringify(body.state)}::jsonb)
-      on conflict (code) do nothing
-      returning version, updated_at
-    `;
-    if (rows.length > 0) {
-      return NextResponse.json({ version: rows[0].version, updatedAt: rows[0].updated_at });
-    }
-    // the code already existed — hand back what is stored rather than overwriting
-    const existing = await sql`
-      select state, version, updated_at from workspaces where code = ${code}
-    `;
-    return NextResponse.json({
-      state: existing[0].state,
-      version: existing[0].version,
-      updatedAt: existing[0].updated_at,
-      existed: true,
+      state: rows[0].state,
+      version: rows[0].version,
+      updatedAt: rows[0].updated_at,
     });
   } catch {
     return NextResponse.json({ error: "Could not reach the database." }, { status: 502 });
@@ -99,43 +53,49 @@ export async function PUT(request: Request) {
 }
 
 /**
- * Push: POST /api/sync — optimistic concurrency on `version`.
- * A stale write returns 409 with the current server state so the client can decide.
+ * Push. Optimistic concurrency on `version`: a stale write returns 409 along
+ * with the current server state so the client can decide what to do.
  */
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   if (!isDatabaseConfigured) return noDatabase();
 
   const body = await request.json().catch(() => null);
-  const code = typeof body?.code === "string" ? body.code : "";
-  if (!CODE_PATTERN.test(code)) return badCode();
   if (!validState(body?.state)) {
     return NextResponse.json({ error: "Invalid state." }, { status: 400 });
   }
-  if (tooLarge(body.state)) {
+  if (JSON.stringify(body.state).length > MAX_STATE_BYTES) {
     return NextResponse.json({ error: "State is too large to sync." }, { status: 413 });
   }
 
-  const baseVersion = Number(body?.baseVersion);
+  const baseVersion = Number(body?.baseVersion) || 0;
   const force = body?.force === true;
+  const document = JSON.stringify(body.state);
 
   try {
+    const user = await userFromRequest(request);
+    if (!user) return unauthorized();
+
     const sql = await db();
 
+    // insert on first sync, otherwise update only if nobody else moved on
     const rows = force
       ? await sql`
-          update workspaces
-             set state = ${JSON.stringify(body.state)}::jsonb,
-                 version = version + 1,
+          insert into workspace_state (user_id, state, version)
+          values (${user.id}, ${document}::jsonb, 1)
+          on conflict (user_id) do update
+             set state = excluded.state,
+                 version = workspace_state.version + 1,
                  updated_at = now()
-           where code = ${code}
           returning version, updated_at
         `
       : await sql`
-          update workspaces
-             set state = ${JSON.stringify(body.state)}::jsonb,
-                 version = version + 1,
+          insert into workspace_state (user_id, state, version)
+          values (${user.id}, ${document}::jsonb, 1)
+          on conflict (user_id) do update
+             set state = excluded.state,
+                 version = workspace_state.version + 1,
                  updated_at = now()
-           where code = ${code} and version = ${baseVersion}
+           where workspace_state.version = ${baseVersion}
           returning version, updated_at
         `;
 
@@ -144,17 +104,14 @@ export async function POST(request: Request) {
     }
 
     const current = await sql`
-      select state, version, updated_at from workspaces where code = ${code}
+      select state, version, updated_at from workspace_state where user_id = ${user.id}
     `;
-    if (current.length === 0) {
-      return NextResponse.json({ error: "No data found for that sync code." }, { status: 404 });
-    }
     return NextResponse.json(
       {
         error: "Another device wrote first.",
-        state: current[0].state,
-        version: current[0].version,
-        updatedAt: current[0].updated_at,
+        state: current[0]?.state ?? null,
+        version: current[0]?.version ?? 0,
+        updatedAt: current[0]?.updated_at ?? null,
       },
       { status: 409 },
     );

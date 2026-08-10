@@ -50,6 +50,9 @@ export function applyRemoteState(data: TrackerData) {
   listeners.forEach((listener) => listener());
 }
 
+/** Replace what is on this device, e.g. when clearing it on sign out. */
+export const replaceState = applyRemoteState;
+
 /** The current state, for the sync engine to push. */
 export function snapshot(): TrackerData {
   return {
