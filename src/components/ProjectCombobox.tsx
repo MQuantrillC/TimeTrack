@@ -4,17 +4,33 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { ChevronDownIcon, SearchIcon } from "@/components/icons";
 import type { Project } from "@/lib/types";
 
+type Option = { id: string | null; name: string; description: string };
+
 type Props = {
   projects: Project[];
+  /** null means the "all" entry when `includeAll` is set, otherwise nothing chosen. */
   selectedId: string | null;
-  onSelect: (projectId: string) => void;
+  onSelect: (projectId: string | null) => void;
+  /** Adds an entry covering every project; choosing it reports null. */
+  includeAll?: boolean;
+  allLabel?: string;
+  label?: string;
+  className?: string;
 };
 
 /**
- * Type-to-search project picker. Closed it reads as the current project;
+ * Type-to-search project picker. Closed it reads as the current choice;
  * focused it becomes a search field over every project in memory.
  */
-export function ProjectCombobox({ projects, selectedId, onSelect }: Props) {
+export function ProjectCombobox({
+  projects,
+  selectedId,
+  onSelect,
+  includeAll = false,
+  allLabel = "All projects",
+  label = "Current project",
+  className = "flex-1",
+}: Props) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [highlight, setHighlight] = useState(0);
@@ -22,17 +38,25 @@ export function ProjectCombobox({ projects, selectedId, onSelect }: Props) {
   const listRef = useRef<HTMLUListElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const selected = projects.find((project) => project.id === selectedId) ?? null;
+  const options = useMemo<Option[]>(() => {
+    const items = projects.map((project) => ({
+      id: project.id,
+      name: project.name,
+      description: project.description,
+    }));
+    return includeAll ? [{ id: null, name: allLabel, description: "" }, ...items] : items;
+  }, [projects, includeAll, allLabel]);
+
+  const selected = options.find((option) => option.id === selectedId) ?? null;
 
   const matches = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return projects;
-    return projects.filter(
-      (project) =>
-        project.name.toLowerCase().includes(q) ||
-        project.description.toLowerCase().includes(q),
+    if (!q) return options;
+    return options.filter(
+      (option) =>
+        option.name.toLowerCase().includes(q) || option.description.toLowerCase().includes(q),
     );
-  }, [projects, query]);
+  }, [options, query]);
 
   useEffect(() => {
     if (!open) return;
@@ -54,7 +78,7 @@ export function ProjectCombobox({ projects, selectedId, onSelect }: Props) {
   const openList = () => {
     if (open) return;
     setQuery("");
-    setHighlight(Math.max(0, projects.findIndex((project) => project.id === selectedId)));
+    setHighlight(Math.max(0, options.findIndex((option) => option.id === selectedId)));
     setOpen(true);
   };
 
@@ -63,8 +87,8 @@ export function ProjectCombobox({ projects, selectedId, onSelect }: Props) {
     setQuery("");
   };
 
-  const choose = (project: Project) => {
-    onSelect(project.id);
+  const choose = (option: Option) => {
+    onSelect(option.id);
     close();
     inputRef.current?.blur();
   };
@@ -94,7 +118,7 @@ export function ProjectCombobox({ projects, selectedId, onSelect }: Props) {
   };
 
   return (
-    <div ref={rootRef} className="relative flex-1">
+    <div ref={rootRef} className={`relative ${className}`}>
       <input
         ref={inputRef}
         type="text"
@@ -102,8 +126,10 @@ export function ProjectCombobox({ projects, selectedId, onSelect }: Props) {
         aria-expanded={open}
         aria-controls="project-listbox"
         aria-autocomplete="list"
-        aria-activedescendant={open && matches[highlight] ? `project-option-${highlight}` : undefined}
-        aria-label="Current project"
+        aria-activedescendant={
+          open && matches[highlight] ? `project-option-${highlight}` : undefined
+        }
+        aria-label={label}
         autoComplete="off"
         spellCheck={false}
         value={open ? query : (selected?.name ?? "")}
@@ -142,41 +168,41 @@ export function ProjectCombobox({ projects, selectedId, onSelect }: Props) {
           id="project-listbox"
           ref={listRef}
           role="listbox"
-          className="absolute top-full right-0 left-0 z-20 mt-1.5 max-h-64 overflow-y-auto rounded-lg border border-line bg-surface py-1 shadow-[0_12px_28px_-10px_rgb(35_38_27/0.25)]"
+          className="absolute top-full right-0 left-0 z-20 mt-1.5 max-h-64 min-w-56 overflow-y-auto rounded-lg border border-line bg-surface py-1 shadow-[0_12px_28px_-10px_rgb(35_38_27/0.25)]"
         >
           {matches.length === 0 && (
             <li className="px-3.5 py-3 text-sm text-ink-muted">
               No project matches “{query.trim()}”
             </li>
           )}
-          {matches.map((project, index) => {
-            const isSelected = project.id === selectedId;
+          {matches.map((option, index) => {
+            const isSelected = option.id === selectedId;
             return (
               <li
-                key={project.id}
+                key={option.id ?? "__all__"}
                 id={`project-option-${index}`}
                 role="option"
                 aria-selected={isSelected}
                 onMouseEnter={() => setHighlight(index)}
                 onMouseDown={(event) => event.preventDefault()}
-                onClick={() => choose(project)}
+                onClick={() => choose(option)}
                 className={`cursor-pointer px-3.5 py-2 ${
                   index === highlight ? "bg-olive-tint" : ""
-                }`}
+                } ${option.id === null ? "border-b border-line" : ""}`}
               >
                 <span className="flex items-center gap-2">
                   <span
                     className={`truncate text-sm text-ink ${
                       isSelected ? "font-semibold" : "font-medium"
-                    }`}
+                    } ${option.id === null ? "text-ink-muted" : ""}`}
                   >
-                    {project.name}
+                    {option.name}
                   </span>
                   {isSelected && <span className="size-1.5 shrink-0 rounded-full bg-olive" />}
                 </span>
-                {project.description && (
+                {option.description && (
                   <span className="mt-0.5 block truncate text-xs text-ink-muted">
-                    {project.description}
+                    {option.description}
                   </span>
                 )}
               </li>

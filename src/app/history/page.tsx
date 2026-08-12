@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { AddSessionDialog, DurationPreview } from "@/components/AddSessionDialog";
+import { ProjectCombobox } from "@/components/ProjectCombobox";
 import { PencilIcon, PlusIcon, TrashIcon } from "@/components/icons";
 import {
   formatDateTime,
@@ -46,6 +47,8 @@ export default function HistoryPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [confirmingId, setConfirmingId] = useState<string | null>(null);
   const [period, setPeriod] = useState<PeriodKey>("all");
+  // a filter for this page only — it does not change what the timer has selected
+  const [projectFilter, setProjectFilter] = useState<string | null>(null);
 
   if (!data.ready) {
     return <div className="h-[520px]" aria-hidden />;
@@ -53,7 +56,11 @@ export default function HistoryPage() {
 
   const from = PERIODS.find((item) => item.key === period)!.from(now);
   const all = sessionHistory(data, now);
-  const entries = from === null ? all : all.filter((entry) => entry.startedAt >= from);
+  const entries = all.filter(
+    (entry) =>
+      (from === null || entry.startedAt >= from) &&
+      (projectFilter === null || entry.projectId === projectFilter),
+  );
   const total = entries.reduce((sum, entry) => sum + entry.duration, 0);
 
   return (
@@ -62,7 +69,7 @@ export default function HistoryPage() {
         <div>
           <h1 className="text-xl font-semibold tracking-tight text-ink sm:text-[22px]">History</h1>
           <p className="mt-1 text-sm text-ink-muted">
-            {entries.length > 0 ? (
+            {all.length > 0 ? (
               <>
                 <span className="font-mono tabular-nums text-ink">{entries.length}</span> sessions ·{" "}
                 <span className="font-mono tabular-nums text-ink">{formatHm(total)}</span> total
@@ -83,30 +90,36 @@ export default function HistoryPage() {
         </button>
       </div>
 
-      <div
-        role="tablist"
-        aria-label="Filter by period"
-        className="mt-6 flex flex-wrap gap-1.5"
-      >
-        {PERIODS.map((item) => {
-          const active = item.key === period;
-          return (
-            <button
-              key={item.key}
-              type="button"
-              role="tab"
-              aria-selected={active}
-              onClick={() => setPeriod(item.key)}
-              className={`shrink-0 rounded-lg px-3 py-1.5 text-[13px] font-medium transition-colors ${
-                active
-                  ? "bg-olive text-canvas"
-                  : "border border-line-strong bg-surface text-ink-muted hover:border-olive hover:text-ink"
-              }`}
-            >
-              {item.label}
-            </button>
-          );
-        })}
+      <div className="mt-6 flex flex-wrap items-center gap-1.5">
+        <ProjectCombobox
+          projects={data.projects}
+          selectedId={projectFilter}
+          onSelect={setProjectFilter}
+          includeAll
+          label="Filter by project"
+          className="w-full sm:w-52"
+        />
+
+        <div role="group" aria-label="Filter by period" className="flex flex-wrap gap-1.5">
+          {PERIODS.map((item) => {
+            const active = item.key === period;
+            return (
+              <button
+                key={item.key}
+                type="button"
+                aria-pressed={active}
+                onClick={() => setPeriod(item.key)}
+                className={`shrink-0 rounded-lg px-3 py-1.5 text-[13px] font-medium transition-colors ${
+                  active
+                    ? "bg-olive text-canvas"
+                    : "border border-line-strong bg-surface text-ink-muted hover:border-olive hover:text-ink"
+                }`}
+              >
+                {item.label}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       <div className="card mt-3 overflow-hidden">
@@ -114,7 +127,7 @@ export default function HistoryPage() {
           <p className="px-5 py-12 text-center text-sm text-ink-muted">
             {all.length === 0
               ? "Nothing tracked yet. Start a timer and it will show up here."
-              : "Nothing tracked in this period."}
+              : "No sessions match these filters."}
           </p>
         )}
 
