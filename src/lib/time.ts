@@ -54,6 +54,24 @@ export function startOfWeek(now: number): number {
   return date.getTime();
 }
 
+export function startOfMonth(now: number): number {
+  const date = new Date(startOfDay(now));
+  date.setDate(1);
+  return date.getTime();
+}
+
+export function startOfQuarter(now: number): number {
+  const date = new Date(startOfMonth(now));
+  date.setMonth(Math.floor(date.getMonth() / 3) * 3);
+  return date.getTime();
+}
+
+export function startOfYear(now: number): number {
+  const date = new Date(startOfDay(now));
+  date.setMonth(0, 1);
+  return date.getTime();
+}
+
 /** Epoch to the value an <input type="datetime-local"> expects, in local time. */
 export function toDateTimeInput(ts: number): string {
   const date = new Date(ts);

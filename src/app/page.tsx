@@ -92,12 +92,13 @@ export default function TimerPage() {
             )}
           </div>
 
+          {/* the project's whole life, carrying on from wherever it left off */}
           <div
             className={`timer mt-6 text-[3.25rem] sm:mt-7 sm:text-[5rem] ${
               !project ? "text-line-strong" : running ? "text-ember" : "text-ink"
             }`}
           >
-            {formatClock(sessionElapsed)}
+            {formatClock(total)}
           </div>
 
           <Status hasProject={Boolean(project)} running={running} />
@@ -147,15 +148,22 @@ export default function TimerPage() {
           <dl className="mt-10 flex w-full border-t border-line pt-6 sm:mt-11">
             <Stat label="Current session" value={formatHms(sessionElapsed)} />
             <div className="w-px bg-line" />
-            <Stat label="Total project time" value={formatHms(total)} />
+            <Stat
+              label="Today on this project"
+              value={formatHms(
+                project ? totalSince(data, startOfDay(now), now, project.id) : 0,
+              )}
+            />
           </dl>
         </div>
       </section>
 
       <section>
+        {/* every project, added up */}
         <dl className="card flex divide-x divide-line">
           <Period label="Today" value={totalSince(data, startOfDay(now), now)} />
           <Period label="This week" value={totalSince(data, startOfWeek(now), now)} />
+          <Period label="All time" value={totalSince(data, 0, now)} />
         </dl>
 
         <div className="mt-8 flex items-baseline justify-between px-1">
@@ -254,12 +262,14 @@ function Status({ hasProject, running }: { hasProject: boolean; running: boolean
 
 function Period({ label, value }: { label: string; value: number }) {
   return (
-    <div className="flex flex-1 items-baseline justify-between gap-3 px-5 py-3.5">
-      <dt className="text-[11px] font-semibold tracking-[0.14em] text-sage-deep uppercase">
+    <div className="flex-1 px-2 py-3.5 text-center">
+      <dt className="text-[10px] font-semibold tracking-[0.12em] text-sage-deep uppercase">
         {label}
       </dt>
       <dd
-        className={`font-mono text-sm tabular-nums ${value > 0 ? "text-ink" : "text-ink-subtle"}`}
+        className={`mt-1 font-mono text-sm tabular-nums ${
+          value > 0 ? "text-ink" : "text-ink-subtle"
+        }`}
       >
         {formatHm(value)}
       </dd>

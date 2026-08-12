@@ -9,6 +9,11 @@ import {
   formatHm,
   formatTimeOfDay,
   fromDateTimeInput,
+  startOfDay,
+  startOfMonth,
+  startOfQuarter,
+  startOfWeek,
+  startOfYear,
   toDateTimeInput,
 } from "@/lib/time";
 import { useNow } from "@/lib/useNow";
@@ -21,6 +26,18 @@ import {
   type HistoryEntry,
 } from "@/lib/store";
 
+/** `from` returns the moment a period begins; null means everything. */
+const PERIODS = [
+  { key: "all", label: "All", from: () => null },
+  { key: "today", label: "Today", from: startOfDay },
+  { key: "week", label: "Week", from: startOfWeek },
+  { key: "month", label: "Month", from: startOfMonth },
+  { key: "quarter", label: "Quarter", from: startOfQuarter },
+  { key: "ytd", label: "YTD", from: startOfYear },
+] as const;
+
+type PeriodKey = (typeof PERIODS)[number]["key"];
+
 export default function HistoryPage() {
   const data = useTracker();
   const running = isRunning(data);
@@ -28,12 +45,15 @@ export default function HistoryPage() {
   const [addOpen, setAddOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [confirmingId, setConfirmingId] = useState<string | null>(null);
+  const [period, setPeriod] = useState<PeriodKey>("all");
 
   if (!data.ready) {
     return <div className="h-[520px]" aria-hidden />;
   }
 
-  const entries = sessionHistory(data, now);
+  const from = PERIODS.find((item) => item.key === period)!.from(now);
+  const all = sessionHistory(data, now);
+  const entries = from === null ? all : all.filter((entry) => entry.startedAt >= from);
   const total = entries.reduce((sum, entry) => sum + entry.duration, 0);
 
   return (
@@ -63,10 +83,38 @@ export default function HistoryPage() {
         </button>
       </div>
 
-      <div className="card mt-6 overflow-hidden sm:mt-8">
+      <div
+        role="tablist"
+        aria-label="Filter by period"
+        className="mt-6 flex flex-wrap gap-1.5"
+      >
+        {PERIODS.map((item) => {
+          const active = item.key === period;
+          return (
+            <button
+              key={item.key}
+              type="button"
+              role="tab"
+              aria-selected={active}
+              onClick={() => setPeriod(item.key)}
+              className={`shrink-0 rounded-lg px-3 py-1.5 text-[13px] font-medium transition-colors ${
+                active
+                  ? "bg-olive text-canvas"
+                  : "border border-line-strong bg-surface text-ink-muted hover:border-olive hover:text-ink"
+              }`}
+            >
+              {item.label}
+            </button>
+          );
+        })}
+      </div>
+
+      <div className="card mt-3 overflow-hidden">
         {entries.length === 0 && (
           <p className="px-5 py-12 text-center text-sm text-ink-muted">
-            Nothing tracked yet. Start a timer and it will show up here.
+            {all.length === 0
+              ? "Nothing tracked yet. Start a timer and it will show up here."
+              : "Nothing tracked in this period."}
           </p>
         )}
 

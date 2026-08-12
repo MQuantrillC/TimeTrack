@@ -144,14 +144,30 @@ export function projectTotal(data: TrackerData, projectId: string, now: number):
   return total;
 }
 
-/** Everything tracked since `from`, attributing a session to the day it began. */
-export function totalSince(data: TrackerData, from: number, now: number): number {
+/**
+ * Everything tracked since `from`, attributing a session to the day it began.
+ * Pass a projectId to narrow it to one project.
+ */
+export function totalSince(
+  data: TrackerData,
+  from: number,
+  now: number,
+  projectId?: string,
+): number {
   let total = 0;
   for (const session of data.sessions) {
-    if (session.startedAt >= from) total += session.duration;
+    if (session.startedAt < from) continue;
+    if (projectId && session.projectId !== projectId) continue;
+    total += session.duration;
   }
   const current = data.sessions.find((session) => session.id === data.currentSessionId);
-  if (current && current.startedAt >= from) total += liveElapsed(data, now);
+  if (
+    current &&
+    current.startedAt >= from &&
+    (!projectId || current.projectId === projectId)
+  ) {
+    total += liveElapsed(data, now);
+  }
   return total;
 }
 
