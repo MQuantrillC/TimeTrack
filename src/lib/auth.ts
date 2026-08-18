@@ -18,8 +18,8 @@ const scryptAsync = promisify(scrypt) as (
   options: ScryptOptions,
 ) => Promise<Buffer>;
 
-/** 128 * N * r = 16 MB of work per hash — comfortably under scrypt's 32 MB default cap. */
-const PARAMS = { N: 16384, r: 8, p: 1, keylen: 64 };
+/** OWASP minimum for scrypt at N=2^14 is p=5. Memory stays at 128*N*r = 16 MB. */
+const PARAMS = { N: 16384, r: 8, p: 5, keylen: 64 };
 
 export const SESSION_COOKIE = "tt_session";
 const SESSION_TTL_DAYS = 30;
@@ -68,6 +68,28 @@ export async function verifyPassword(password: string, stored: string): Promise<
   }
 }
 
+/** True when a stored hash was made with weaker settings than PARAMS. */
+export function needsRehash(stored: string): boolean {
+  const [scheme, n, r, p] = stored.split("$");
+  return (
+    scheme !== "scrypt" ||
+    Number(n) !== PARAMS.N ||
+    Number(r) !== PARAMS.r ||
+    Number(p) !== PARAMS.p
+  );
+}
+
+/**
+ * A hash of a random value nobody holds the input to, verified when no account
+ * matches so that sign-in does comparable work on both paths.
+ *
+ * It is a decoy, not a secret. Note that it cannot equalise timing on its own:
+ * hashes made under older parameters cost less to verify, so the sign-in route
+ * also pads every rejection to a fixed floor.
+ */
+export const DECOY_HASH =
+  "scrypt$16384$8$5$08Jth7DgqWQtiTe2FXMGfw$PNcfim2U7uRq9x0OETLm3mQ0YVcMBc-QYG1AEKd6_FOT2ZhntlR3nwTMitYsR0BwVM_6ysrBFmRDfJ6phUPp1g";
+
 /* ------------------------------------------------------------------- sessions */
 
 /**
@@ -86,6 +108,8 @@ export async function createSession(userId: string): Promise<string> {
   const token = newSessionToken();
   const expiresAt = new Date(Date.now() + SESSION_TTL_DAYS * 86_400_000);
   const sql = await db();
+  // sign-in is a natural moment to drop this user's stale rows
+  await sql`delete from auth_sessions where user_id = ${userId} and expires_at < now()`;
   await sql`
     insert into auth_sessions (token_hash, user_id, expires_at)
     values (${tokenHash(token)}, ${userId}, ${expiresAt.toISOString()})

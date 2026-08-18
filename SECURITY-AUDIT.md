@@ -56,6 +56,47 @@ must be resolved before any commercial conversation.
 
 ---
 
+## Remediation applied — 18 August 2026
+
+Six findings have been closed. Each was chosen for having no effect on how the application
+behaves for a user; the rest remain open and are described in full below.
+
+| ID | Status | What changed |
+|----|--------|--------------|
+| H2 | **Fixed** | scrypt raised to N=2^14, r=8, **p=5**, the OWASP minimum at this N. Verified cost rose from 59 ms to ~115 ms per hash. Because parameters live inside each hash string, existing passwords keep verifying; a successful sign-in now re-hashes anything stored under weaker settings, so accounts migrate as people use them. |
+| M1 | **Partly fixed** | The timing oracle is closed. Sign-in hashes on both paths and pads every rejection to a 500 ms floor. The sign-up 409 still discloses that an address is registered — closing it needs the email capability from M4, so it stays open. |
+| M2 | **Fixed** | `next.config.ts` now sets a Content-Security-Policy, `X-Frame-Options: DENY`, `nosniff`, `Referrer-Policy` and `Permissions-Policy`, and drops the `X-Powered-By` banner. Clickjacking is no longer possible. |
+| M3 | **Fixed** | `/api/health` returns only `databaseConfigured` and `connection` to an anonymous caller. Variable names and table names now require a session, so the endpoint stays useful for diagnosing an outage without handing a stranger a map. |
+| L1 | **Fixed** | Signing in first deletes that user's expired session rows, so the table no longer grows without bound. |
+| L3 | **Fixed** | `Content-Length` is checked before the body is parsed, so an oversized payload is rejected without being read into memory. |
+
+### On the timing fix
+
+Worth recording, because the obvious fix was wrong. Hashing a decoy on the unknown-account
+path did not equalise the timings — it inverted them. Hashes written under the old `p=1`
+verify faster than the new `p=5` decoy, so accounts created before the change became
+*faster* to reject than unknown addresses, and the oracle survived in the other direction.
+Any fixed decoy has this problem while two parameter sets coexist. Padding every rejection
+to a constant floor removes the signal regardless of which parameters a given hash carries.
+
+Measured over eight samples per case, before and after:
+
+```
+before   unknown 205,205,160,155,148,130 ms   known 250,229,283,283,234,278 ms   (separable)
+after    unknown 532,521,537,538,535,535,514,529 ms
+         known   547,519,560,526,533,514,518,537 ms                              (overlapping)
+```
+
+### Verification
+
+Production build served locally with the enforced policy: all pages render, fonts and
+styles load, the timer runs, navigation and sign-in work, and the browser reports **no CSP
+violations**. The password re-hash path was exercised end to end by planting a `p=1` hash,
+signing in, and confirming it was rewritten to `p=5` with the old and new passwords still
+behaving correctly. The oversized-payload guard returns 413.
+
+---
+
 ## What is already correct
 
 Worth stating plainly, because a buyer's reviewer will check these first.
@@ -75,8 +116,8 @@ Worth stating plainly, because a buyer's reviewer will check these first.
   database disclosure cannot be replayed into account takeover. A fresh token is issued on
   every sign-in, so session fixation is not possible.
 - **Correct cookie flags.** `httpOnly`, `sameSite=lax`, `secure` in production, `path=/`.
-- **Generic authentication errors.** Sign-in returns an identical message and status for an
-  unknown email and a wrong password (though timing undermines this — see M1).
+- **Generic authentication errors.** Sign-in returns an identical message, status and — since
+  the M1 fix — an indistinguishable response time for an unknown email and a wrong password.
 - **No secrets in the repository.** `.env*` is gitignored with an explicit exception only
   for `.env.example`, which holds no values. No credentials appear in tracked files.
 - **Clean dependency tree.** `npm audit` reports 0 vulnerabilities across production and
@@ -84,6 +125,8 @@ Worth stating plainly, because a buyer's reviewer will check these first.
 - **Sanitised error responses.** Database exceptions are caught and replaced with generic
   messages; no driver output, stack trace or connection detail reaches the client.
 - **HSTS enforced.** `max-age=63072000; includeSubDomains; preload`, supplied by Vercel.
+  Since the M2 fix this sits alongside a CSP, `frame-ancestors 'none'`, `nosniff`,
+  `Referrer-Policy` and `Permissions-Policy`.
 - **API routes are not CORS-exposed.** No `Access-Control-Allow-Origin` on `/api/*`, so they
   are same-origin only. The static HTML carries Vercel's default `ACAO: *`, which is
   harmless — it permits reading public markup without credentials.
@@ -151,6 +194,8 @@ existing database). Apply the same treatment to sign-up.
 
 ### H2 — Password hashing work factor below OWASP minimum · High
 
+**Status: fixed 18 August 2026.** Raised to p=5, with re-hash on next sign-in.
+
 **Where:** `src/lib/auth.ts` — `PARAMS = { N: 16384, r: 8, p: 1, keylen: 64 }`
 
 The scrypt cost is N=2^14, r=8, p=1. The OWASP Password Storage Cheat Sheet gives the
@@ -175,6 +220,8 @@ forward.
 ---
 
 ### M1 — User enumeration via sign-up response and sign-in timing · Medium
+
+**Status: partly fixed 18 August 2026.** Timing oracle closed; the sign-up 409 remains.
 
 **Where:** `src/app/api/auth/signup/route.ts` (409 response); `src/app/api/auth/signin/route.ts`
 
@@ -209,6 +256,8 @@ trade-off and record that decision.
 
 ### M2 — Security headers absent · Medium
 
+**Status: fixed 18 August 2026.** Full header set added, verified against a production build.
+
 **Where:** `next.config.ts` — no `headers()` entry; no middleware.
 
 Live production responses carry `Strict-Transport-Security` from Vercel and nothing else.
@@ -232,6 +281,8 @@ are wired up, so start in report-only mode, confirm nothing breaks, then enforce
 ---
 
 ### M3 — Public health endpoint discloses environment and schema detail · Medium
+
+**Status: fixed 18 August 2026.** Detail now requires a session.
 
 **Where:** `src/app/api/health/route.ts`
 
@@ -316,6 +367,8 @@ schedule, and a documented answer on data residency.
 
 ### L1 — Expired sessions are never purged · Low
 
+**Status: fixed 18 August 2026.** Purged for that user on each sign-in.
+
 `auth_sessions` rows are deleted only on explicit sign-out, so expired rows accumulate
 indefinitely. They cannot be used to authenticate — `userFromRequest` filters on
 `expires_at > now()` — making this a hygiene and storage-growth issue rather than an
@@ -330,6 +383,8 @@ stolen cookie stays valid for up to a month. Consider a shorter absolute lifetim
 sliding idle window, and a "sign out everywhere" control once account management exists.
 
 ### L3 — Request body parsed before the size cap is applied · Low
+
+**Status: fixed 18 August 2026.** Content-Length is checked first.
 
 `src/app/api/sync/route.ts` calls `request.json()` and only then measures the serialised size
 against the 1 MB cap, so a large payload is fully parsed before rejection. Vercel's own

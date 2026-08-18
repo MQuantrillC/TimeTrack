@@ -59,6 +59,12 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   if (!isDatabaseConfigured) return noDatabase();
 
+  // reject oversized payloads before spending memory parsing them
+  const declaredSize = Number(request.headers.get("content-length") ?? 0);
+  if (declaredSize > MAX_STATE_BYTES * 1.1) {
+    return NextResponse.json({ error: "State is too large to sync." }, { status: 413 });
+  }
+
   const body = await request.json().catch(() => null);
   if (!validState(body?.state)) {
     return NextResponse.json({ error: "Invalid state." }, { status: 400 });

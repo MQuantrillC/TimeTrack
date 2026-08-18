@@ -1,19 +1,33 @@
-import { NextResponse } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
+import { userFromRequest } from "@/lib/auth";
 import { connectionVariable, db, detectedVariables, isDatabaseConfigured } from "@/lib/db";
 
 /**
- * Deployment diagnostics. Reports variable *names* and whether a query
- * succeeds — never connection strings, credentials or raw driver errors.
+ * Deployment diagnostics. Never reports connection strings, credentials or raw
+ * driver errors.
+ *
+ * Anyone may ask whether the database is reachable — that is what makes this
+ * useful when sign-in is the thing that is broken. The environment and schema
+ * detail is only reconnaissance value to a stranger, so it is kept for signed-in
+ * callers.
  */
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+async function isSignedIn(request: NextRequest) {
+  if (!isDatabaseConfigured) return false;
+  try {
+    return (await userFromRequest(request)) !== null;
+  } catch {
+    return false;
+  }
+}
+
+export async function GET(request: NextRequest) {
+  const detailed = await isSignedIn(request);
   if (!isDatabaseConfigured) {
     return NextResponse.json({
       databaseConfigured: false,
-      connectionVariable: null,
-      detectedVariables: [],
       connection: "not-configured",
       hint: "No environment variable holding a postgres:// URL was found. On Vercel: Storage → Create Database → Neon, then redeploy so the new deployment picks it up. Locally: copy .env.example to .env.local and paste a connection string.",
     });
@@ -29,18 +43,19 @@ export async function GET() {
     `;
     return NextResponse.json({
       databaseConfigured: true,
-      connectionVariable,
-      detectedVariables: detectedVariables(),
       connection: "ok",
-      tables: rows.map((row) => row.table_name),
+      ...(detailed && {
+        connectionVariable,
+        detectedVariables: detectedVariables(),
+        tables: rows.map((row) => row.table_name),
+      }),
     });
   } catch {
     return NextResponse.json(
       {
         databaseConfigured: true,
-        connectionVariable,
-        detectedVariables: detectedVariables(),
         connection: "failed",
+        ...(detailed && { connectionVariable, detectedVariables: detectedVariables() }),
         hint: "The connection string was found but the database could not be reached. Check that it is a Neon connection string (the driver speaks Neon's HTTP protocol, not plain Postgres over TCP) and that it has not been rotated.",
       },
       { status: 502 },
