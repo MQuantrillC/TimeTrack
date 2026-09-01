@@ -104,6 +104,22 @@ export function CloudOffIcon({ className }: IconProps) {
   );
 }
 
+export function ChevronLeftIcon({ className }: IconProps) {
+  return (
+    <Icon className={className}>
+      <path d="M14.5 6.5 9 12l5.5 5.5" />
+    </Icon>
+  );
+}
+
+export function ChevronRightIcon({ className }: IconProps) {
+  return (
+    <Icon className={className}>
+      <path d="M9.5 6.5 15 12l-5.5 5.5" />
+    </Icon>
+  );
+}
+
 export function CloseIcon({ className }: IconProps) {
   return (
     <Icon className={className}>

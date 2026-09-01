@@ -3,7 +3,14 @@
 import { useState } from "react";
 import { AddSessionDialog, DurationPreview } from "@/components/AddSessionDialog";
 import { ProjectCombobox } from "@/components/ProjectCombobox";
-import { CloseIcon, PencilIcon, PlusIcon, TrashIcon } from "@/components/icons";
+import {
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  CloseIcon,
+  PencilIcon,
+  PlusIcon,
+  TrashIcon,
+} from "@/components/icons";
 import {
   formatDateTime,
   formatDurationLabel,
@@ -11,13 +18,9 @@ import {
   formatTimeOfDay,
   fromDateTimeInput,
   dayBounds,
-  startOfDay,
-  startOfMonth,
-  startOfQuarter,
-  startOfWeek,
-  startOfYear,
   toDateTimeInput,
 } from "@/lib/time";
+import { PERIODS, formatDayLabel, periodRange, type PeriodKey } from "@/lib/period";
 import { useNow } from "@/lib/useNow";
 import {
   deleteSession,
@@ -28,18 +31,6 @@ import {
   type HistoryEntry,
 } from "@/lib/store";
 
-/** `from` returns the moment a period begins; null means everything. */
-const PERIODS = [
-  { key: "all", label: "All", from: () => null },
-  { key: "today", label: "Today", from: startOfDay },
-  { key: "week", label: "Week", from: startOfWeek },
-  { key: "month", label: "Month", from: startOfMonth },
-  { key: "quarter", label: "Quarter", from: startOfQuarter },
-  { key: "ytd", label: "YTD", from: startOfYear },
-] as const;
-
-type PeriodKey = (typeof PERIODS)[number]["key"];
-
 export default function HistoryPage() {
   const data = useTracker();
   const running = isRunning(data);
@@ -48,6 +39,8 @@ export default function HistoryPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [confirmingId, setConfirmingId] = useState<string | null>(null);
   const [period, setPeriod] = useState<PeriodKey>("all");
+  // how many periods back from the current one we are looking at; 0 is current
+  const [offset, setOffset] = useState(0);
   // a filter for this page only — it does not change what the timer has selected
   const [projectFilter, setProjectFilter] = useState<string | null>(null);
   // a single day, chosen from the calendar; takes the place of the period pills
@@ -58,20 +51,62 @@ export default function HistoryPage() {
   }
 
   const dayWindow = dayBounds(day);
-  const from = PERIODS.find((item) => item.key === period)!.from(now);
+  const range = periodRange(period, offset, now);
+  const [start, end] = dayWindow ?? [range.start, range.end];
+  const label = dayWindow ? formatDayLabel(dayWindow[0], now) : range.label;
+
   const all = sessionHistory(data, now);
   const entries = all.filter((entry) => {
     if (projectFilter !== null && entry.projectId !== projectFilter) return false;
-    if (dayWindow) return entry.startedAt >= dayWindow[0] && entry.startedAt < dayWindow[1];
-    return from === null || entry.startedAt >= from;
+    if (start !== null && entry.startedAt < start) return false;
+    if (end !== null && entry.startedAt >= end) return false;
+    return true;
   });
   const total = entries.reduce((sum, entry) => sum + entry.duration, 0);
+
+  const choosePeriod = (key: PeriodKey) => {
+    setPeriod(key);
+    setOffset(0);
+    setDay("");
+  };
 
   return (
     <div>
       <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-3">
         <div>
-          <h1 className="text-xl font-semibold tracking-tight text-ink sm:text-[22px]">History</h1>
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+            <h1 className="text-xl font-semibold tracking-tight text-ink sm:text-[22px]">
+              History
+            </h1>
+            {label && (
+              <span className="flex items-center gap-0.5">
+                {range.navigable && !dayWindow && (
+                  <button
+                    type="button"
+                    onClick={() => setOffset(offset - 1)}
+                    aria-label="Previous period"
+                    className="icon-btn size-7 text-ink-subtle hover:bg-olive-tint hover:text-olive"
+                  >
+                    <ChevronLeftIcon className="size-4" />
+                  </button>
+                )}
+                <span className="text-[15px] font-normal text-ink-subtle sm:text-base">
+                  {label}
+                </span>
+                {range.navigable && !dayWindow && (
+                  <button
+                    type="button"
+                    onClick={() => setOffset(offset + 1)}
+                    disabled={offset >= 0}
+                    aria-label="Next period"
+                    className="icon-btn size-7 text-ink-subtle hover:bg-olive-tint hover:text-olive disabled:pointer-events-none disabled:opacity-25"
+                  >
+                    <ChevronRightIcon className="size-4" />
+                  </button>
+                )}
+              </span>
+            )}
+          </div>
           <p className="mt-1 text-sm text-ink-muted">
             {all.length > 0 ? (
               <>
@@ -138,10 +173,7 @@ export default function HistoryPage() {
                 key={item.key}
                 type="button"
                 aria-pressed={active}
-                onClick={() => {
-                  setPeriod(item.key);
-                  setDay("");
-                }}
+                onClick={() => choosePeriod(item.key)}
                 className={`shrink-0 rounded-lg px-3 py-1.5 text-[13px] font-medium transition-colors ${
                   active
                     ? "bg-olive text-canvas"
