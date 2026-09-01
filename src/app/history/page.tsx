@@ -2,11 +2,11 @@
 
 import { useState } from "react";
 import { AddSessionDialog, DurationPreview } from "@/components/AddSessionDialog";
+import { PeriodPicker } from "@/components/PeriodPicker";
 import { ProjectCombobox } from "@/components/ProjectCombobox";
 import {
   ChevronLeftIcon,
   ChevronRightIcon,
-  CloseIcon,
   PencilIcon,
   PlusIcon,
   TrashIcon,
@@ -17,10 +17,9 @@ import {
   formatHm,
   formatTimeOfDay,
   fromDateTimeInput,
-  dayBounds,
   toDateTimeInput,
 } from "@/lib/time";
-import { PERIODS, formatDayLabel, periodRange, type PeriodKey } from "@/lib/period";
+import { PERIODS, periodRange, type PeriodKey } from "@/lib/period";
 import { useNow } from "@/lib/useNow";
 import {
   deleteSession,
@@ -43,17 +42,13 @@ export default function HistoryPage() {
   const [offset, setOffset] = useState(0);
   // a filter for this page only — it does not change what the timer has selected
   const [projectFilter, setProjectFilter] = useState<string | null>(null);
-  // a single day, chosen from the calendar; takes the place of the period pills
-  const [day, setDay] = useState("");
 
   if (!data.ready) {
     return <div className="h-[520px]" aria-hidden />;
   }
 
-  const dayWindow = dayBounds(day);
   const range = periodRange(period, offset, now);
-  const [start, end] = dayWindow ?? [range.start, range.end];
-  const label = dayWindow ? formatDayLabel(dayWindow[0], now) : range.label;
+  const { start, end, label } = range;
 
   const all = sessionHistory(data, now);
   const entries = all.filter((entry) => {
@@ -67,7 +62,6 @@ export default function HistoryPage() {
   const choosePeriod = (key: PeriodKey) => {
     setPeriod(key);
     setOffset(0);
-    setDay("");
   };
 
   return (
@@ -80,7 +74,7 @@ export default function HistoryPage() {
             </h1>
             {label && (
               <span className="flex items-center gap-0.5">
-                {range.navigable && !dayWindow && (
+                {range.navigable && (
                   <button
                     type="button"
                     onClick={() => setOffset(offset - 1)}
@@ -93,7 +87,7 @@ export default function HistoryPage() {
                 <span className="text-[15px] font-normal text-ink-subtle sm:text-base">
                   {label}
                 </span>
-                {range.navigable && !dayWindow && (
+                {range.navigable && (
                   <button
                     type="button"
                     onClick={() => setOffset(offset + 1)}
@@ -139,35 +133,19 @@ export default function HistoryPage() {
           label="Filter by project"
           className="w-full sm:w-52"
         />
-        <div className="relative">
-          <input
-            type="date"
-            value={day}
-            onChange={(event) => setDay(event.target.value)}
-            aria-label="Filter by a specific date"
-            title="Filter by a specific date"
-            className={`rounded-lg border px-3 py-1.5 text-[16px] transition-colors focus:border-olive focus:outline-none sm:text-[13px] ${
-              dayWindow
-                ? "border-olive font-medium text-ink ring-1 ring-olive"
-                : "border-line-strong text-ink-muted hover:border-olive"
-            } bg-surface ${dayWindow ? "pr-8" : ""}`}
-          />
-          {dayWindow && (
-            <button
-              type="button"
-              onClick={() => setDay("")}
-              aria-label="Clear the date filter"
-              className="absolute top-1/2 right-1.5 -translate-y-1/2 rounded p-1 text-ink-subtle transition-colors hover:bg-olive-tint hover:text-olive"
-            >
-              <CloseIcon className="size-3.5" />
-            </button>
-          )}
-        </div>
+        <PeriodPicker
+          period={period}
+          offset={offset}
+          now={now}
+          onChange={(key, next) => {
+            setPeriod(key);
+            setOffset(next);
+          }}
+        />
 
         <div role="group" aria-label="Filter by period" className="flex flex-wrap gap-1.5">
           {PERIODS.map((item) => {
-            // a chosen day replaces the period, so none of these read as active
-            const active = item.key === period && !dayWindow;
+            const active = item.key === period;
             return (
               <button
                 key={item.key}

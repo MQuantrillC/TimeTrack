@@ -104,6 +104,15 @@ export function CloudOffIcon({ className }: IconProps) {
   );
 }
 
+export function CalendarIcon({ className }: IconProps) {
+  return (
+    <Icon className={className}>
+      <rect x="3.75" y="5.5" width="16.5" height="14" rx="2.5" />
+      <path d="M3.75 10h16.5M8.5 3.5v4M15.5 3.5v4" />
+    </Icon>
+  );
+}
+
 export function ChevronLeftIcon({ className }: IconProps) {
   return (
     <Icon className={className}>

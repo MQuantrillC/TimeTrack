@@ -66,24 +66,16 @@ export function startOfQuarter(now: number): number {
   return date.getTime();
 }
 
+export function startOfHalf(now: number): number {
+  const date = new Date(startOfMonth(now));
+  date.setMonth(date.getMonth() < 6 ? 0 : 6);
+  return date.getTime();
+}
+
 export function startOfYear(now: number): number {
   const date = new Date(startOfDay(now));
   date.setMonth(0, 1);
   return date.getTime();
-}
-
-/**
- * The local day a `<input type="date">` value names, as [start, end).
- * Built by stepping the calendar rather than adding 24 hours, so the days either
- * side of a clock change are still bounded correctly.
- */
-export function dayBounds(value: string): [number, number] | null {
-  if (!value) return null;
-  const start = new Date(`${value}T00:00`);
-  if (Number.isNaN(start.getTime())) return null;
-  const end = new Date(start);
-  end.setDate(end.getDate() + 1);
-  return [start.getTime(), end.getTime()];
 }
 
 /** Epoch to the value an <input type="datetime-local"> expects, in local time. */
