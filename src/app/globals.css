@@ -140,6 +140,39 @@ body {
   }
 }
 
+/* a heart rising from below the fold, drifting sideways as it goes */
+.heart {
+  position: absolute;
+  bottom: -3rem;
+  animation-name: rise;
+  animation-timing-function: ease-in-out;
+  animation-fill-mode: both;
+  will-change: transform, opacity;
+}
+
+@keyframes rise {
+  0% {
+    transform: translate3d(0, 0, 0) scale(0.5) rotate(-8deg);
+    opacity: 0;
+  }
+  15% {
+    opacity: 0.85;
+  }
+  80% {
+    opacity: 0.85;
+  }
+  100% {
+    transform: translate3d(var(--drift, 0px), -108vh, 0) scale(1) rotate(14deg);
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .heart {
+    display: none;
+  }
+}
+
 @keyframes breathe {
   0%,
   100% {

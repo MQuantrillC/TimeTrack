@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { SESSION_COOKIE, clearSessionCookie, destroySession, userFromRequest } from "@/lib/auth";
 import { isDatabaseConfigured } from "@/lib/db";
+import { heartsFor } from "@/lib/flair";
 
 export const dynamic = "force-dynamic";
 
@@ -11,7 +12,11 @@ export async function GET(request: NextRequest) {
   }
   try {
     const user = await userFromRequest(request);
-    return NextResponse.json({ user, accountsAvailable: true });
+    return NextResponse.json({
+      user,
+      accountsAvailable: true,
+      hearts: user ? heartsFor(user.email) : false,
+    });
   } catch {
     return NextResponse.json({ user: null, accountsAvailable: false });
   }
