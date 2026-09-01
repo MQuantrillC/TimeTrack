@@ -72,6 +72,20 @@ export function startOfYear(now: number): number {
   return date.getTime();
 }
 
+/**
+ * The local day a `<input type="date">` value names, as [start, end).
+ * Built by stepping the calendar rather than adding 24 hours, so the days either
+ * side of a clock change are still bounded correctly.
+ */
+export function dayBounds(value: string): [number, number] | null {
+  if (!value) return null;
+  const start = new Date(`${value}T00:00`);
+  if (Number.isNaN(start.getTime())) return null;
+  const end = new Date(start);
+  end.setDate(end.getDate() + 1);
+  return [start.getTime(), end.getTime()];
+}
+
 /** Epoch to the value an <input type="datetime-local"> expects, in local time. */
 export function toDateTimeInput(ts: number): string {
   const date = new Date(ts);

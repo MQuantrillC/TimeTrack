@@ -104,6 +104,14 @@ export function CloudOffIcon({ className }: IconProps) {
   );
 }
 
+export function CloseIcon({ className }: IconProps) {
+  return (
+    <Icon className={className}>
+      <path d="m6.5 6.5 11 11M17.5 6.5l-11 11" />
+    </Icon>
+  );
+}
+
 export function CheckIcon({ className }: IconProps) {
   return (
     <Icon className={className}>

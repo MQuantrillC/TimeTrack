@@ -3,13 +3,14 @@
 import { useState } from "react";
 import { AddSessionDialog, DurationPreview } from "@/components/AddSessionDialog";
 import { ProjectCombobox } from "@/components/ProjectCombobox";
-import { PencilIcon, PlusIcon, TrashIcon } from "@/components/icons";
+import { CloseIcon, PencilIcon, PlusIcon, TrashIcon } from "@/components/icons";
 import {
   formatDateTime,
   formatDurationLabel,
   formatHm,
   formatTimeOfDay,
   fromDateTimeInput,
+  dayBounds,
   startOfDay,
   startOfMonth,
   startOfQuarter,
@@ -49,18 +50,21 @@ export default function HistoryPage() {
   const [period, setPeriod] = useState<PeriodKey>("all");
   // a filter for this page only — it does not change what the timer has selected
   const [projectFilter, setProjectFilter] = useState<string | null>(null);
+  // a single day, chosen from the calendar; takes the place of the period pills
+  const [day, setDay] = useState("");
 
   if (!data.ready) {
     return <div className="h-[520px]" aria-hidden />;
   }
 
+  const dayWindow = dayBounds(day);
   const from = PERIODS.find((item) => item.key === period)!.from(now);
   const all = sessionHistory(data, now);
-  const entries = all.filter(
-    (entry) =>
-      (from === null || entry.startedAt >= from) &&
-      (projectFilter === null || entry.projectId === projectFilter),
-  );
+  const entries = all.filter((entry) => {
+    if (projectFilter !== null && entry.projectId !== projectFilter) return false;
+    if (dayWindow) return entry.startedAt >= dayWindow[0] && entry.startedAt < dayWindow[1];
+    return from === null || entry.startedAt >= from;
+  });
   const total = entries.reduce((sum, entry) => sum + entry.duration, 0);
 
   return (
@@ -71,7 +75,8 @@ export default function HistoryPage() {
           <p className="mt-1 text-sm text-ink-muted">
             {all.length > 0 ? (
               <>
-                <span className="font-mono tabular-nums text-ink">{entries.length}</span> sessions ·{" "}
+                <span className="font-mono tabular-nums text-ink">{entries.length}</span>{" "}
+                {entries.length === 1 ? "session" : "sessions"} ·{" "}
                 <span className="font-mono tabular-nums text-ink">{formatHm(total)}</span> total
               </>
             ) : (
@@ -99,16 +104,44 @@ export default function HistoryPage() {
           label="Filter by project"
           className="w-full sm:w-52"
         />
+        <div className="relative">
+          <input
+            type="date"
+            value={day}
+            onChange={(event) => setDay(event.target.value)}
+            aria-label="Filter by a specific date"
+            title="Filter by a specific date"
+            className={`rounded-lg border px-3 py-1.5 text-[16px] transition-colors focus:border-olive focus:outline-none sm:text-[13px] ${
+              dayWindow
+                ? "border-olive font-medium text-ink ring-1 ring-olive"
+                : "border-line-strong text-ink-muted hover:border-olive"
+            } bg-surface ${dayWindow ? "pr-8" : ""}`}
+          />
+          {dayWindow && (
+            <button
+              type="button"
+              onClick={() => setDay("")}
+              aria-label="Clear the date filter"
+              className="absolute top-1/2 right-1.5 -translate-y-1/2 rounded p-1 text-ink-subtle transition-colors hover:bg-olive-tint hover:text-olive"
+            >
+              <CloseIcon className="size-3.5" />
+            </button>
+          )}
+        </div>
 
         <div role="group" aria-label="Filter by period" className="flex flex-wrap gap-1.5">
           {PERIODS.map((item) => {
-            const active = item.key === period;
+            // a chosen day replaces the period, so none of these read as active
+            const active = item.key === period && !dayWindow;
             return (
               <button
                 key={item.key}
                 type="button"
                 aria-pressed={active}
-                onClick={() => setPeriod(item.key)}
+                onClick={() => {
+                  setPeriod(item.key);
+                  setDay("");
+                }}
                 className={`shrink-0 rounded-lg px-3 py-1.5 text-[13px] font-medium transition-colors ${
                   active
                     ? "bg-olive text-canvas"
