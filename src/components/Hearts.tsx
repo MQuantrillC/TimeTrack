@@ -24,10 +24,11 @@ type Heart = {
 const TONES = ["var(--color-blush)", "var(--color-mauve)", "var(--color-peach)"];
 
 const FIRST_WAIT_MS = 9_000;
-const GAP_MIN_MS = 70_000;
-const GAP_SPREAD_MS = 70_000;
-/** Longest a heart can be on screen: the slowest rise plus the latest start. */
-const LIFETIME_MS = 14_000;
+/** Roughly five minutes between showers, wandering either side so it never feels metronomic. */
+const GAP_MIN_MS = 240_000;
+const GAP_SPREAD_MS = 120_000;
+/** The latest start (5s) plus the slowest rise (10s), with a second to spare. */
+const LIFETIME_MS = 16_000;
 
 export function Hearts() {
   const { hearts: enabled } = useAccount();
@@ -41,12 +42,13 @@ export function Hearts() {
     let nextId = 0;
 
     const release = () => {
-      const batch = Array.from({ length: 5 + Math.floor(Math.random() * 5) }, () => ({
+      // a proper shower, trickling in over a few seconds rather than arriving as a wall
+      const batch = Array.from({ length: 14 + Math.floor(Math.random() * 9) }, () => ({
         id: nextId++,
         left: 4 + Math.random() * 92,
         drift: (Math.random() - 0.5) * 140,
         duration: 6 + Math.random() * 4,
-        delay: Math.random() * 2.5,
+        delay: Math.random() * 5,
         size: 14 + Math.random() * 18,
         tone: TONES[Math.floor(Math.random() * TONES.length)],
       }));
