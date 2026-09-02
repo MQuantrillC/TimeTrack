@@ -15,7 +15,9 @@ immediately — with optional cloud sync so the same data follows you between de
   incrementing counter, so tab switches, sleep and refreshes cannot cause drift
 - **One project at a time** — switching projects pauses and saves the current one, and never
   auto-starts the next
-- **Sessions** — each stretch of work is stored individually; project totals are their sum
+- **Sessions** — each stretch of work is stored individually; project totals are their sum.
+  Pressing START within five minutes of pausing continues the same session; a longer gap
+  opens a new one, and NEW SESSION splits deliberately at any time
 - **History** — a chronological log of every stretch of work, with exact timestamps and durations
 - **Searchable project picker** — type to filter by project name or client
 - **Project management** — create, rename, delete, and see totals at a glance

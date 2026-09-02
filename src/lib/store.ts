@@ -227,13 +227,29 @@ export function pause() {
   commit(pauseData(state, Date.now()));
 }
 
+/**
+ * Coming back within this window continues the same session; a longer gap opens
+ * a new one. A short interruption — a call, a coffee — belongs to the stretch of
+ * work around it. Returning hours later does not, and treating it as the same
+ * session produced history rows spanning days that held seconds of work.
+ *
+ * NEW SESSION still splits deliberately inside the window.
+ */
+const RESUME_WINDOW_MS = 5 * 60_000;
+
+function resumable(session: TimeSession, now: number): boolean {
+  // a session with no end was never closed, so there is nothing to resume across
+  if (session.endedAt === null) return true;
+  return now - session.endedAt <= RESUME_WINDOW_MS;
+}
+
 export function start() {
   const now = Date.now();
   const data = state;
   if (!data.selectedProjectId || data.runningSince !== null) return;
 
   const session = currentSession(data);
-  if (session && session.projectId === data.selectedProjectId) {
+  if (session && session.projectId === data.selectedProjectId && resumable(session, now)) {
     // resume the paused session — it keeps counting from where it left off
     commit({
       ...data,
