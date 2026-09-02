@@ -37,6 +37,8 @@ export type AccountState = {
   message: string | null;
   /** decided on the server, per account — see lib/flair.ts */
   hearts: boolean;
+  /** decided on the server — see lib/admin.ts. Shows the button; grants nothing. */
+  admin: boolean;
 };
 
 let state: AccountState = {
@@ -46,6 +48,7 @@ let state: AccountState = {
   status: "off",
   message: null,
   hearts: false,
+  admin: false,
 };
 
 let version = 0;
@@ -185,12 +188,12 @@ function signedOutLocally() {
     window.clearTimeout(pushTimer);
     pushTimer = null;
   }
-  set({ user: null, status: "off", message: null, hearts: false });
+  set({ user: null, status: "off", message: null, hearts: false, admin: false });
 }
 
-async function afterSignIn(user: User, hearts: boolean) {
+async function afterSignIn(user: User, hearts: boolean, admin: boolean) {
   version = 0;
-  set({ user, hearts, status: "syncing", message: null });
+  set({ user, hearts, admin, status: "syncing", message: null });
   await pullNow();
 }
 
@@ -209,7 +212,7 @@ export async function signUp(input: {
     if (!response.ok) return await errorFrom(response, "Could not create the account.");
     const body = await response.json();
     // a brand new account has no stored state, so this device's data becomes its data
-    await afterSignIn(body.user as User, body.hearts === true);
+    await afterSignIn(body.user as User, body.hearts === true, body.admin === true);
     return null;
   } catch {
     return "Could not reach the server.";
@@ -225,7 +228,7 @@ export async function signIn(email: string, password: string): Promise<string | 
     });
     if (!response.ok) return await errorFrom(response, "Could not sign in.");
     const body = await response.json();
-    await afterSignIn(body.user as User, body.hearts === true);
+    await afterSignIn(body.user as User, body.hearts === true, body.admin === true);
     return null;
   } catch {
     return "Could not reach the server.";
@@ -273,6 +276,7 @@ function start() {
         user: body.user ?? null,
         accountsAvailable: body.accountsAvailable !== false,
         hearts: body.hearts === true,
+        admin: body.admin === true,
       });
       if (body.user) {
         set({ status: "syncing" });
@@ -307,6 +311,7 @@ const SERVER_STATE: AccountState = {
   status: "off",
   message: null,
   hearts: false,
+  admin: false,
 };
 
 export function useAccount(): AccountState {

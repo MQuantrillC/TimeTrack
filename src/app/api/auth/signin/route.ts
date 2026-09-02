@@ -9,6 +9,7 @@ import {
   verifyPassword,
 } from "@/lib/auth";
 import { db, isDatabaseConfigured } from "@/lib/db";
+import { isAdmin } from "@/lib/admin";
 import { heartsFor } from "@/lib/flair";
 
 export const dynamic = "force-dynamic";
@@ -73,6 +74,7 @@ export async function POST(request: NextRequest) {
         email: row.email,
       },
       hearts: heartsFor(row.email as string),
+      admin: isAdmin(row.email as string),
     });
     setSessionCookie(response, token);
     return response;

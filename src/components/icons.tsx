@@ -104,6 +104,16 @@ export function CloudOffIcon({ className }: IconProps) {
   );
 }
 
+export function UsersIcon({ className }: IconProps) {
+  return (
+    <Icon className={className}>
+      <circle cx="9.5" cy="8" r="3.25" />
+      <path d="M3.5 19.5a6 6 0 0 1 12 0" />
+      <path d="M16.5 5.2a3.25 3.25 0 0 1 0 5.6M17.5 14.2a6 6 0 0 1 3 5.3" />
+    </Icon>
+  );
+}
+
 export function CalendarIcon({ className }: IconProps) {
   return (
     <Icon className={className}>

@@ -8,6 +8,7 @@ import {
   validateSignUp,
 } from "@/lib/auth";
 import { db, isDatabaseConfigured } from "@/lib/db";
+import { isAdmin } from "@/lib/admin";
 import { heartsFor } from "@/lib/flair";
 
 export const dynamic = "force-dynamic";
@@ -50,6 +51,7 @@ export async function POST(request: NextRequest) {
     const response = NextResponse.json({
       user: { id, firstName, lastName, email },
       hearts: heartsFor(email),
+      admin: isAdmin(email),
     });
     setSessionCookie(response, token);
     return response;

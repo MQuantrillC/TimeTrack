@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { RefreshIcon } from "@/components/icons";
+import { AdminPanel } from "@/components/AdminPanel";
+import { RefreshIcon, UsersIcon } from "@/components/icons";
 import { signOut, syncNow, useAccount } from "@/lib/account";
 
 const SYNC_LABEL = {
@@ -70,16 +71,20 @@ function AccountDialog({ onClose }: { onClose: () => void }) {
   const account = useAccount();
   const router = useRouter();
   const [busy, setBusy] = useState(false);
+  const [adminOpen, setAdminOpen] = useState(false);
 
   useEffect(() => {
+    // the admin panel brings its own Escape handling
+    if (adminOpen) return;
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") onClose();
     };
     document.addEventListener("keydown", onKeyDown);
     return () => document.removeEventListener("keydown", onKeyDown);
-  }, [onClose]);
+  }, [onClose, adminOpen]);
 
   if (!account.user) return null;
+  if (adminOpen) return <AdminPanel onClose={() => setAdminOpen(false)} />;
 
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center bg-ink/25 p-4 pt-20 sm:p-6 sm:pt-28">
@@ -122,6 +127,20 @@ function AccountDialog({ onClose }: { onClose: () => void }) {
           <p className="mt-3 rounded-lg border border-blush bg-blush-tint px-3.5 py-2.5 text-xs text-ink">
             {account.message}
           </p>
+        )}
+
+        {account.admin && (
+          <button
+            type="button"
+            onClick={() => setAdminOpen(true)}
+            className="mt-3 flex w-full items-center justify-between rounded-lg border border-line bg-surface px-4 py-3 text-sm text-ink transition-colors hover:border-olive hover:bg-olive-tint/40"
+          >
+            <span className="flex items-center gap-2">
+              <UsersIcon className="size-4 text-olive" />
+              Accounts
+            </span>
+            <span className="text-xs text-ink-muted">Projects and time per account</span>
+          </button>
         )}
 
         <p className="mt-4 text-xs text-ink-muted">

@@ -107,6 +107,13 @@ Worth stating plainly, because a buyer's reviewer will check these first.
 - **No broken access control.** Every read and write on `workspace_state` is scoped to
   `user.id` resolved from the session cookie. The API accepts no user-supplied identifier
   for row lookup, so there is no IDOR surface. Sync returns 401 when unauthenticated.
+  One deliberate exception, added 2 September 2026: `GET /api/admin/users` returns per-account
+  totals — name, email, project and session counts, tracked time, last sync — to the
+  addresses listed in `src/lib/admin.ts`. It is read-only and offers no way to act on
+  another account. Authorisation is decided in the route on every request from the session
+  cookie; the `admin` boolean the client receives only decides whether to draw the button,
+  and forging it grants nothing. Verified: 401 signed out, 403 with no data for an ordinary
+  signed-in account.
 - **No XSS vector.** No `dangerouslySetInnerHTML`, `innerHTML`, `eval`, `new Function` or
   `document.write` anywhere. All user-controlled strings render through React's escaping.
 - **Sound password cryptography.** scrypt with a fresh 16-byte random salt per password,
