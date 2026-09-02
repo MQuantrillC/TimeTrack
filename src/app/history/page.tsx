@@ -15,8 +15,9 @@ import {
   formatDateTime,
   formatDurationLabel,
   formatHm,
-  formatTimeOfDay,
+  formatSessionEnd,
   fromDateTimeInput,
+  hadPause,
   toDateTimeInput,
 } from "@/lib/time";
 import { PERIODS, periodRange, type PeriodKey } from "@/lib/period";
@@ -200,7 +201,13 @@ export default function HistoryPage() {
                 <div className="mt-1 font-mono text-xs tabular-nums text-ink-muted sm:hidden">
                   {formatDateTime(entry.startedAt)}
                   {entry.endedAt !== null && !entry.running && (
-                    <span className="text-ink-subtle"> → {formatTimeOfDay(entry.endedAt)}</span>
+                    <span className="text-ink-subtle">
+                      {" → "}
+                      {formatSessionEnd(entry.startedAt, entry.endedAt)}
+                    </span>
+                  )}
+                  {hadPause(entry.startedAt, entry.endedAt, entry.duration) && !entry.running && (
+                    <span className="block font-sans text-ink-subtle">paused in between</span>
                   )}
                 </div>
 
@@ -223,7 +230,9 @@ export default function HistoryPage() {
                     </span>
                     {entry.endedAt !== null && !entry.running && (
                       <span className="mt-0.5 block text-xs text-ink-subtle">
-                        until {formatTimeOfDay(entry.endedAt)}
+                        until {formatSessionEnd(entry.startedAt, entry.endedAt)}
+                        {hadPause(entry.startedAt, entry.endedAt, entry.duration) &&
+                          " · paused in between"}
                       </span>
                     )}
                   </span>

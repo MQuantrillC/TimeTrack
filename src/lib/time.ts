@@ -34,6 +34,45 @@ export function formatTimeOfDay(ts: number): string {
   return `${pad(hours % 12 || 12)}:${pad(date.getMinutes())} ${suffix}`;
 }
 
+const MONTH_ABBR = [
+  "Jan",
+  "Feb",
+  "Mar",
+  "Apr",
+  "May",
+  "Jun",
+  "Jul",
+  "Aug",
+  "Sep",
+  "Oct",
+  "Nov",
+  "Dec",
+];
+
+/**
+ * When a session ended. Carries the date whenever that is a different day from
+ * the start — without it, a session running past midnight reads as having
+ * finished before it began.
+ */
+export function formatSessionEnd(startedAt: number, endedAt: number): string {
+  const start = new Date(startedAt);
+  const end = new Date(endedAt);
+  if (start.toDateString() === end.toDateString()) return formatTimeOfDay(endedAt);
+  return `${MONTH_ABBR[end.getMonth()]} ${end.getDate()}, ${formatTimeOfDay(endedAt)}`;
+}
+
+/**
+ * Whether the clock was stopped for a meaningful stretch inside a session, which
+ * is why its span can be far longer than the time it records.
+ */
+export function hadPause(
+  startedAt: number,
+  endedAt: number | null,
+  duration: number,
+): boolean {
+  return endedAt !== null && endedAt - startedAt - duration > 60_000;
+}
+
 /** 08/10/2026 12:41 PM */
 export function formatDateTime(ts: number): string {
   const date = new Date(ts);
