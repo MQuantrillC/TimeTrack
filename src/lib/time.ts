@@ -143,3 +143,12 @@ export function formatDurationLabel(ms: number): string {
   if (m > 0) return `${m}:${pad(s)} minutes`;
   return `${s} ${s === 1 ? "second" : "seconds"}`;
 }
+
+/**
+ * Sep 1, 04:55 AM — the year dropped for rows that are already gathered under
+ * their project, where the full date does not fit and rarely earns its space.
+ */
+export function formatShortDateTime(ts: number): string {
+  const date = new Date(ts);
+  return `${MONTH_ABBR[date.getMonth()]} ${date.getDate()}, ${formatTimeOfDay(ts)}`;
+}

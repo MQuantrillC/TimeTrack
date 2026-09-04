@@ -205,6 +205,45 @@ export function sessionHistory(data: TrackerData, now: number): HistoryEntry[] {
     .sort((a, b) => b.startedAt - a.startedAt);
 }
 
+export type ProjectGroup = {
+  projectId: string;
+  projectName: string;
+  /** the group's own sessions, in the order they were given */
+  entries: HistoryEntry[];
+  total: number;
+  running: boolean;
+};
+
+/**
+ * The same entries gathered under their project, heaviest first. Takes entries
+ * rather than raw data so it inherits whatever filtering the caller has already
+ * applied — the totals are of what is on screen, not of all time.
+ *
+ * Ranked by time rather than by date: a list of sessions is a log and reads
+ * newest first, but a list of projects is a summary and should say where the
+ * hours went.
+ */
+export function groupByProject(entries: HistoryEntry[]): ProjectGroup[] {
+  const groups = new Map<string, ProjectGroup>();
+  for (const entry of entries) {
+    const group = groups.get(entry.projectId);
+    if (group) {
+      group.entries.push(entry);
+      group.total += entry.duration;
+      group.running ||= entry.running;
+    } else {
+      groups.set(entry.projectId, {
+        projectId: entry.projectId,
+        projectName: entry.projectName,
+        entries: [entry],
+        total: entry.duration,
+        running: entry.running,
+      });
+    }
+  }
+  return [...groups.values()].sort((a, b) => b.total - a.total);
+}
+
 /* ------------------------------------------------------------------ actions */
 
 /** Closes the live segment into its session. Returns data unchanged when paused. */

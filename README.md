@@ -18,7 +18,9 @@ immediately — with optional cloud sync so the same data follows you between de
 - **Sessions** — each stretch of work is stored individually; project totals are their sum.
   Pressing START within five minutes of pausing continues the same session; a longer gap
   opens a new one, and NEW SESSION splits deliberately at any time
-- **History** — a chronological log of every stretch of work, with exact timestamps and durations
+- **History** — every stretch of work, with exact timestamps and durations. Read it _by project_
+  to see where the hours went, ranked by time spent and expandable session by session, or _by
+  session_ for the plain chronological log
 - **Searchable project picker** — type to filter by project name or client
 - **Project management** — create, rename, delete, and see totals at a glance
 - **Accounts and cloud sync** — sign in and your projects follow you to any device
@@ -101,6 +103,7 @@ src/
     auth.ts       server passwords, sessions and validation
     db.ts         Neon client and schema
     time.ts       duration and timestamp formatting
+    historyView.ts  whether history is read by project or by session
     useNow.ts     one-second tick, only while running
   components/     Logo, Nav, AccountMenu, ProjectCombobox, icons
   app/            /, /projects, /history, /signin, /signup, api/
